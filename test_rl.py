@@ -8,8 +8,6 @@ import mpnn as gnn
 import tensorflow as tf
 
 import torch
-import datetime
-import time
 import math
 from mpnn import GCN, GCN_test
 from sklearn.metrics import mean_squared_error
@@ -41,6 +39,7 @@ class High_agent:
 
 
     def replay(self, epi):
+        self.optimizer_primary.zero_grad()
 
         left_list = []
         right_list = []
@@ -52,18 +51,23 @@ class High_agent:
         r1 = 3
         r2 = 8
 
-        qsa1 = self.primary_network(x1)[0][1]
-        qsa2 = self.primary_network(x2)[0][0]
+        qsa1 = self.primary_network(x1)[1]
+
+
+
+        qsa2 = self.primary_network(x2)[0]
 
         aa1 = self.target_network(x3).detach()
         aa2 = self.target_network(x4).detach()
-        q_next_max1 = torch.max(aa1[0])
-        q_next_max2 = torch.max(aa2[0])
+        q_next_max1 = torch.max(aa1)
+        q_next_max2 = torch.max(aa2)
 
-        left_list.append(qsa1)
-        left_list.append(qsa2)
-        right_list.append(r1 + self.gamma * q_next_max1)
-        right_list.append(r2 + self.gamma * q_next_max2)
+        # left_list.append(qsa1)
+        # left_list.append(qsa2)
+        left_list = torch.cat((torch.unsqueeze(qsa1,0),torch.unsqueeze(qsa2,0)))
+        # right_list.append(r1 + self.gamma * q_next_max1)
+        # right_list.append(r2 + self.gamma * q_next_max2)
+        right_list = torch.cat((torch.unsqueeze(r1 + self.gamma * q_next_max1,0), torch.unsqueeze(r2 + self.gamma * q_next_max2,0)))
 
         left_list = torch.tensor(left_list, dtype=torch.float32, requires_grad=True)
         right_list = torch.tensor(right_list, dtype=torch.float32)
@@ -75,7 +79,7 @@ class High_agent:
 
         loss = self.criterion(left_list, right_list)
 
-        self.optimizer_primary.zero_grad()
+
         loss.backward()
         self.optimizer_primary.step()
 
